@@ -1,17 +1,34 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+// Diagnostic log: %APPDATA%\ZIL\zil.log (Windows) - records startup steps so load problems in a host can be traced.
+static void zilLog(const juce::String& m)
+{
+    static std::unique_ptr<juce::FileLogger> logger = [] {
+        auto dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("ZIL");
+        dir.createDirectory();
+        auto f = dir.getChildFile("zil.log");
+        if (f.getSize() > 200000) f.deleteFile();
+        return std::make_unique<juce::FileLogger>(f, "ZIL log", 0);
+    }();
+    if (logger) logger->logMessage(juce::Time::getCurrentTime().toString(true, true, true, true) + "  " + m);
+}
+
 ZilProcessor::ZilProcessor()
     : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, &undo, "ZIL", zil::createLayout())
 {
+    zilLog("processor ctor start");
     for (int i = 0; i < zil::P_COUNT; ++i) raw[(size_t) i] = apvts.getRawParameterValue(zil::defs()[(size_t) i].id);
     for (auto& c : ccMap) c.store(-1);
+    zilLog("params ok; loading preset bank");
     loadPreset(0);
+    zilLog("processor ctor done");
 }
 
 void ZilProcessor::prepareToPlay(double sr, int block)
 {
+    zilLog("prepareToPlay sr=" + juce::String(sr) + " block=" + juce::String(block));
     lastSr = sr; lastBlock = block;
     engine.prepare(sr, block);
 }
@@ -103,5 +120,11 @@ void ZilProcessor::setStateInformation(const void* data, int size)
         }
 }
 
-juce::AudioProcessorEditor* ZilProcessor::createEditor() { return new ZilEditor(*this); }
+juce::AudioProcessorEditor* ZilProcessor::createEditor()
+{
+    zilLog("createEditor");
+    auto* e = new ZilEditor(*this);
+    zilLog("editor created");
+    return e;
+}
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new ZilProcessor(); }
