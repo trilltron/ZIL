@@ -368,8 +368,10 @@ struct ZilEditor::Impl
 
 ZilEditor::ZilEditor(ZilProcessor& p) : AudioProcessorEditor(&p), proc(p)
 {
+    zilLog("editor ctor: start");
     setLookAndFeel(&lf);
     impl = std::make_unique<Impl>(*this, p);
+    zilLog("editor ctor: widgets built");
     showPage(0);
     setResizable(true, true);
     setResizeLimits(800, 450, 3200, 1800);
@@ -378,11 +380,26 @@ ZilEditor::ZilEditor(ZilProcessor& p) : AudioProcessorEditor(&p), proc(p)
     setSize(w, w * 9 / 16);
     addMouseListener(this, true);
     startTimerHz(30);
+    zilLog("editor ctor: done");
+}
+
+void ZilEditor::parentHierarchyChanged()
+{
+    // JUCE 8 on Windows defaults to Direct2D, which some hosts crash on when a plugin window opens: use the software renderer.
+    if (auto* peer = getPeer())
+    {
+        peer->setCurrentRenderingEngine(0);
+        zilLog("window attached; software renderer selected");
+    }
 }
 
 ZilEditor::~ZilEditor() { stopTimer(); setLookAndFeel(nullptr); }
 
-void ZilEditor::paint(Graphics& g) { g.fillAll(Colour(0xff04060d)); }
+void ZilEditor::paint(Graphics& g)
+{
+    static bool logged = false; if (!logged) { logged = true; zilLog("first paint"); }
+    g.fillAll(Colour(0xff04060d));
+}
 void ZilEditor::resized() { proc.uiWidth = getWidth(); applyTransform(); }
 
 void ZilEditor::applyTransform()

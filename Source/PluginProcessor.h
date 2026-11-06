@@ -4,6 +4,8 @@
 #include "Engine.h"
 #include "Presets.h"
 
+void zilLog(const juce::String& message);   // writes to %APPDATA%/ZIL/zil.log
+
 class ZilProcessor : public juce::AudioProcessor
 {
 public:

@@ -2,7 +2,7 @@
 #include "PluginEditor.h"
 
 // Diagnostic log: %APPDATA%\ZIL\zil.log (Windows) - records startup steps so load problems in a host can be traced.
-static void zilLog(const juce::String& m)
+void zilLog(const juce::String& m)
 {
     static std::unique_ptr<juce::FileLogger> logger = [] {
         auto dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("ZIL");

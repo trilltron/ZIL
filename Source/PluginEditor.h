@@ -10,6 +10,7 @@ public:
     ~ZilEditor() override;
     void paint(juce::Graphics&) override;
     void resized() override;
+    void parentHierarchyChanged() override;
     void mouseMove(const juce::MouseEvent&) override;
     void mouseExit(const juce::MouseEvent&) override;
     void showPage(int index);
