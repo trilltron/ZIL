@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "../Source/PluginProcessor.h"
 #include "../Source/PluginEditor.h"
+#include "../Source/Vst2.h"
 
 static void writeWav(const juce::File& f, const juce::AudioBuffer<float>& b, double sr)
 {
@@ -54,6 +55,29 @@ int main(int argc, char** argv)
         }
         std::cout << "presets=" << zil::presets().size() << " nan=" << bad << " silent=" << silent << " worstPeak=" << worstPeak << "\n";
         return bad || silent ? 1 : 0;
+    }
+    if (mode == "vst2")
+    {
+        using zilvst2::HostCb; using zilvst2::intptr; using zilvst2::VstMidiEvent; using zilvst2::VstEvent;
+        using VAEffect = zilvst2::AEffect;
+        HostCb host = [](VAEffect*, int32_t op, int32_t, intptr, void*, float) -> intptr { return op == 1 ? 2400 : 0; };
+        VAEffect* e = VSTPluginMain(host);
+        if (!e) { std::cout << "VSTPluginMain returned null\n"; return 1; }
+        auto d = [&](int op, int idx = 0, intptr v = 0, void* ptr = nullptr, float o = 0) { return e->dispatcher(e, op, idx, v, ptr, o); };
+        char name[64] = {}; d(45, 0, 0, name); std::cout << "name=" << name << " params=" << e->numParams << " programs=" << e->numPrograms << " flags=" << e->flags << " magic=" << std::hex << e->magic << std::dec << "\n";
+        d(0); d(10, 0, 0, nullptr, 48000.f); d(11, 0, 512); d(12, 0, 1);
+        d(2, 0, 4); char pn[64] = {}; d(5, 0, 0, pn); std::cout << "program 4 = " << pn << "\n";
+        VstMidiEvent me {}; me.type = 1; me.byteSize = sizeof(me); me.midiData[0] = (char) 0x90; me.midiData[1] = 60; me.midiData[2] = 100;
+        struct { int32_t n; intptr r; VstEvent* ev[1]; } evs { 1, 0, { (VstEvent*) &me } };
+        d(25, 0, 0, &evs);
+        std::vector<float> L(512), R(512); float* out[2] = { L.data(), R.data() }; float peak = 0;
+        for (int i = 0; i < 40; ++i) { e->processReplacing(e, nullptr, out, 512); for (int k = 0; k < 512; ++k) peak = std::max(peak, std::abs(L[(size_t) k])); }
+        std::cout << "vst2 audio peak after note-on: " << peak << "\n";
+        void* chunk = nullptr; auto sz = d(23, 0, 0, &chunk); std::cout << "chunk bytes=" << sz << "\n";
+        e->setParameter(e, zil::P_fCut, 0.25f); std::cout << "param roundtrip: " << e->getParameter(e, zil::P_fCut) << "\n";
+        char disp[64] = {}; d(7, zil::P_fCut, 0, disp); std::cout << "display fCut: " << disp << "\n";
+        d(12, 0, 0); d(1);
+        return peak > 0.01f && sz > 100 ? 0 : 1;
     }
     if (mode == "state")
     {

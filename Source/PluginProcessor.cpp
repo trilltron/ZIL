@@ -128,3 +128,5 @@ juce::AudioProcessorEditor* ZilProcessor::createEditor()
     return e;
 }
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new ZilProcessor(); }
+
+#include "Vst2Wrapper.inl"
