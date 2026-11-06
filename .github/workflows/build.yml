@@ -32,6 +32,7 @@ jobs:
         run: |
           mkdir -p pkg
           if [ "$RUNNER_OS" = "Windows" ]; then 7z a pkg/ZIL-Windows-VST3.zip ./build/ZIL_artefacts/Release/VST3/ZIL.vst3 ./build/ZIL_artefacts/Release/Standalone/ZIL.exe
+            7z a pkg/ZIL-Windows-single-file.zip ./build/ZIL_artefacts/Release/VST3/ZIL.vst3/Contents/x86_64-win/ZIL.vst3
           elif [ "$RUNNER_OS" = "macOS" ]; then (cd build/ZIL_artefacts/Release && zip -qr ../../../pkg/ZIL-macOS-VST3-AU.zip VST3 AU)
           else (cd build/ZIL_artefacts/Release && zip -qr ../../../pkg/ZIL-Linux-VST3.zip VST3); fi
       - name: Publish release
