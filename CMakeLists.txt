@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(ZIL VERSION 1.0.0 LANGUAGES C CXX)
+# Windows: link the C++ runtime statically so no Visual C++ Redistributable is needed
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
