@@ -1,0 +1,27 @@
+name: Build ZIL
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: Windows-VST3 }
+          - { os: macos-latest,   name: macOS-VST3-AU }
+          - { os: ubuntu-latest,  name: Linux-VST3 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libfreetype-dev libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libgl-dev libfontconfig1-dev
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DZIL_BUILD_TESTS=OFF ${{ runner.os == 'macOS' && '-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"' || '' }}
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZIL-${{ matrix.name }}
+          path: |
+            build/ZIL_artefacts/Release/VST3
+            build/ZIL_artefacts/Release/AU
