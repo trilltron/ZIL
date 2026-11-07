@@ -56,6 +56,27 @@ int main(int argc, char** argv)
         std::cout << "presets=" << zil::presets().size() << " nan=" << bad << " silent=" << silent << " worstPeak=" << worstPeak << "\n";
         return bad || silent ? 1 : 0;
     }
+    if (mode == "pack")
+    {
+        const int n = zil::exportPack(out);
+        std::cout << "exported " << n << " presets to " << out.getFullPathName() << "\n";
+        zil::setUserPresetDir(out); const int loaded = zil::reloadUserPresets();
+        std::cout << "reloaded " << loaded << " user presets; total " << zil::presets().size() << "\n";
+        // render each pack preset: must be audible, finite, not clipping
+        int bad = 0; const double sr = 48000; juce::AudioBuffer<float> b(2, 512);
+        for (int i = zil::factoryCount(); i < (int) zil::presets().size(); ++i)
+        {
+            p.prepareToPlay(sr, 512); p.loadPreset(i);
+            const bool kit = p.apvts.getRawParameterValue("kit")->load() > 0.5f; float peak = 0; bool nan = false;
+            for (int k = 0; k < 150; ++k) { juce::MidiBuffer m; if (k == 0) for (int nn : kit ? std::vector<int> { 36, 38 } : std::vector<int> { 48, 55 }) m.addEvent(juce::MidiMessage::noteOn(1, nn, (juce::uint8) 100), 0);
+                p.processBlock(b, m); peak = std::max(peak, b.getMagnitude(0, 512)); for (int c = 0; c < 2; ++c) for (int q = 0; q < 512; ++q) if (!std::isfinite(b.getSample(c, q))) nan = true; }
+            if (nan || peak < 0.01f || peak > 1.0001f) { ++bad; std::cout << "PROBLEM: " << zil::presets()[(size_t) i].name << " peak=" << peak << (nan ? " NaN" : "") << "\n"; }
+        }
+        // save-current round trip
+        const auto tmp = out.getSiblingFile("_savetest"); zil::setUserPresetDir(tmp); tmp.createDirectory(); p.loadPreset(zil::factoryCount()); const bool saved = p.saveCurrentAsPreset("Roundtrip Test"); const int after = (int) zil::presets().size();
+        std::cout << "save current: " << (saved ? "OK" : "FAIL") << " total now " << after << "\n"; tmp.deleteRecursively();
+        return bad || !saved || n != loaded ? 1 : 0;
+    }
     if (mode == "vst2")
     {
         using zilvst2::HostCb; using zilvst2::intptr; using zilvst2::VstMidiEvent; using zilvst2::VstEvent;

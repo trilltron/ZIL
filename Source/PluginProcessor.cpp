@@ -22,6 +22,7 @@ ZilProcessor::ZilProcessor()
     for (int i = 0; i < zil::P_COUNT; ++i) raw[(size_t) i] = apvts.getRawParameterValue(zil::defs()[(size_t) i].id);
     for (auto& c : ccMap) c.store(-1);
     zilLog("params ok; loading preset bank");
+    zil::reloadUserPresets();
     loadPreset(0);
     zilLog("processor ctor done");
 }
@@ -86,6 +87,15 @@ void ZilProcessor::loadPreset(int index)
             prm->setValueNotifyingHost(prm->convertTo0to1(p.v[(size_t) i]));
     engine.midiCount++;
     updateHostDisplay(ChangeDetails().withProgramChanged(true));
+}
+
+bool ZilProcessor::saveCurrentAsPreset(const juce::String& name)
+{
+    std::array<float, zil::P_COUNT> v {};
+    for (int i = 0; i < zil::P_COUNT; ++i) v[(size_t) i] = raw[(size_t) i]->load();
+    const bool ok = zil::savePreset(name, v);
+    zil::reloadUserPresets();
+    return ok;
 }
 
 void ZilProcessor::getStateInformation(juce::MemoryBlock& dest)

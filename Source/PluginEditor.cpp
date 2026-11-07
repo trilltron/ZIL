@@ -190,6 +190,16 @@ struct SetPage : Page
         place(add<ChoiceChips>(p, "kit", StringArray { "OFF", "ACOU", "ELEC", "METAL", "PERC" }, 16.f), 140, 520, 640, 46);
         place(add<LedSwitch>(p, "tilt", "TILT"), 1160, 270, 160, 36);
         static const int widths[5] = { 900, 1200, 1500, 1800, 2400 }; static const char* names[5] = { "75%", "100%", "125%", "150%", "200%" };
+        auto styleBtn = [](TextButton* b) { b->setColour(TextButton::buttonColourId, Colour(0xff0d1324)); b->setColour(TextButton::textColourOffId, Theme::text); };
+        auto* save = add<TextButton>("SAVE PRESET"); save->setBounds(140, 610, 190, 44); styleBtn(save);
+        save->onClick = [this] {
+            auto* aw = new AlertWindow("Save preset", "Name your preset (saved to your ZIL Presets folder):", MessageBoxIconType::NoIcon);
+            aw->addTextEditor("n", "My Preset"); aw->addButton("Save", 1, KeyPress(KeyPress::returnKey)); aw->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
+            aw->enterModalState(true, ModalCallbackFunction::create([this, aw, sp = SafePointer<Component>(this)](int r) { if (sp != nullptr && r == 1) p.saveCurrentAsPreset(aw->getTextEditorContents("n")); }), true); };
+        auto* open = add<TextButton>("OPEN PRESET FOLDER"); open->setBounds(345, 610, 260, 44); styleBtn(open);
+        open->onClick = [] { zil::userPresetDir().createDirectory(); zil::userPresetDir().startAsProcess(); };
+        auto* reload = add<TextButton>("RELOAD"); reload->setBounds(620, 610, 130, 44); styleBtn(reload);
+        reload->onClick = [] { zil::reloadUserPresets(); };
         for (int i = 0; i < 5; ++i)
         {
             auto* b = add<TextButton>(names[i]); b->setBounds(1160 + i * 120, 360, 112, 46); b->onClick = [this, i] { if (onScale) onScale(widths[i]); };
@@ -204,7 +214,8 @@ struct SetPage : Page
         g.setColour(Theme::text); g.setFont(Theme::head(30.f)); g.drawText("ZIL", 1160, 470, 200, 40, Justification::centredLeft);
         mono(g, "Xeno-Synth Transmitter  v1.0", 1160, 515, 600, 16.f, Theme::screenText);
         mono(g, "by Trill Tron", 1160, 541, 600, 16.f, Theme::textDim);
-        mono(g, String(zil::presets().size()) + " factory presets  ·  3 layers  ·  16 voices", 1160, 580, 700, 15.f, Theme::textDim);
+        mono(g, String(zil::factoryCount()) + " factory presets  ·  " + String((int) zil::presets().size() - zil::factoryCount()) + " user presets  ·  3 layers  ·  16 voices", 1160, 580, 700, 15.f, Theme::textDim);
+        mono(g, "PRESET FILES (.zilpreset) GO IN:", 140, 662, 600, 12.f, Theme::textDim); mono(g, zil::userPresetDir().getFullPathName(), 140, 676, 900, 12.f, Theme::screenDim);
         mono(g, "Right-click any knob: MIDI learn.  Double-click: reset.", 1160, 608, 700, 15.f, Theme::textDim);
     }
 };

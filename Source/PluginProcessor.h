@@ -36,6 +36,7 @@ public:
 
     // --- ZIL specifics
     void loadPreset(int index);
+    bool saveCurrentAsPreset(const juce::String& name);
     bool isFavorite(const juce::String& name) const { return favorites.contains(name); }
     void toggleFavorite(const juce::String& name) { if (favorites.contains(name)) favorites.removeString(name); else favorites.add(name); }
     int ccFor(int paramIndex) const { for (int i = 0; i < 128; ++i) if (ccMap[(size_t) i].load() == paramIndex) return i; return -1; }

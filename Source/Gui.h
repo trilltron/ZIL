@@ -450,7 +450,7 @@ class Browser : public Component, private Timer
 public:
     explicit Browser(ZilProcessor& p) : proc(p)
     {
-        cats = StringArray { "ALL", "FAV", "SIG" }; cats.addArray(zil::categoryNames());
+        cats = StringArray { "ALL", "FAV", "SIG", "USER" }; cats.addArray(zil::categoryNames());
         setWantsKeyboardFocus(true); refresh(); startTimerHz(15);
         syncToCurrent();
     }
@@ -460,7 +460,7 @@ public:
         for (int i = 0; i < (int) all.size(); ++i)
         {
             const auto& pr = all[(size_t) i];
-            if (cat == "ALL" || (cat == "FAV" && proc.isFavorite(pr.name)) || (cat == "SIG" && pr.signature) || pr.category == cat) list.add(i);
+            if (cat == "ALL" || (cat == "FAV" && proc.isFavorite(pr.name)) || (cat == "SIG" && pr.signature) || (cat == "USER" && pr.user) || (!pr.user && pr.category == cat)) list.add(i);
         }
         presetScroll = jlimit(0, jmax(0, list.size() - rows), presetScroll); repaint();
     }
@@ -532,7 +532,7 @@ public:
         grabKeyboardFocus();
         const int row = (e.y - 52) / 28; if (e.y < 52 || row >= rows) return;
         if (e.x >= 24 && e.x < 200)
-        { const int ci = row + catScroll; if (ci < cats.size()) { catIndex = ci; presetScroll = 0; refresh(); syncToCurrent(); } }
+        { const int ci = row + catScroll; if (ci < cats.size()) { catIndex = ci; if (cats[ci] == "USER") zil::reloadUserPresets(); presetScroll = 0; refresh(); syncToCurrent(); } }
         else if (e.x >= 216)
         {
             const int li = row + presetScroll; if (li >= list.size()) return;

@@ -198,30 +198,70 @@ std::vector<Entry> entries()
 
 uint32_t fnv(const std::string& s) { uint32_t h = 2166136261u; for (unsigned char c : s) { h ^= c; h *= 16777619u; } return h; }
 
-std::vector<Preset> build()
+std::array<float, P_COUNT> computeValues(const Entry& e)
 {
     const auto& D = defs();
+    std::array<float, P_COUNT> v {};
+    for (int i = 0; i < P_COUNT; ++i) v[(size_t) i] = D[(size_t) i].def;
+    auto apply = [&](const KV& kv) {
+        for (auto& p : kv) { int i = indexOf(p.first); jassert(i >= 0); if (i >= 0) v[(size_t) i] = juce::jlimit(D[(size_t) i].mn, D[(size_t) i].mx, p.second); } };
+    apply(archetypes().at(e.arch));
+    if (e.sig)
+    {
+        const uint32_t h = fnv(e.name);
+        switch (h % 4)
+        {
+            case 0: apply({ { "bcMix", .3f }, { "bcBits", 8 }, { "rmMix", .12f }, { "rmFreq", 330 } }); break;
+            case 1: apply({ { "smMix", .4f }, { "smSize", .6f }, { "cGrn", .6f } }); break;
+            case 2: apply({ { "ftMix", .4f }, { "ftShift", (float) (h % 100) / 100.f }, { "smMix", .2f } }); break;
+            default: apply({ { "rmMix", .3f }, { "rmFreq", 110.f + (float) (h % 400) }, { "dOn", 1 }, { "dMix", .3f } }); break;
+        }
+        apply({ { "m5", .2f } });
+    }
+    apply(e.tweaks);
+    return v;
+}
+
+// ---- starter pack: dark / cloudy underground-rap sounds (drop-in .zilpreset files; not part of the factory bank)
+std::vector<Entry> packEntries()
+{
+    auto E = [](const char* s, const char* n, const char* a, KV t) { return Entry { "Cloud Rap Vol.1", s, n, false, a, t }; };
+    std::vector<Entry> e;
+    const char* B = "808 and Bass"; const char* K = "Bells and Plucks"; const char* P = "Pads and Air"; const char* Y = "Keys"; const char* Ld = "Leads"; const char* D = "Drums and FX";
+    e.push_back(E(B, "Cloud 808 Long", "subsine", { { "lALvl", .95f }, { "lADec", 2.4f }, { "lASus", 0 }, { "lARel", .4f }, { "aRel", .4f }, { "fDrv", 8 }, { "fCut", 900 }, { "fEnv", 0 }, { "glide", .08f }, { "aGain", 2 }, { "rWet", 0 } }));
+    e.push_back(E(B, "Distorted 808 Slide", "subsine", { { "lADec", 1.6f }, { "lASus", 0 }, { "fDrv", 20 }, { "glide", .15f }, { "lBLvl", .3f }, { "bTbl", .75f }, { "lBTune", -12 }, { "lBDec", 1.2f }, { "lBSus", 0 }, { "fCut", 1800 }, { "bcMix", .1f }, { "rWet", 0 } }));
+    e.push_back(E(B, "Hollow Sub Boom", "subsine", { { "lATune", -12 }, { "lADec", 3.5f }, { "lASus", 0 }, { "aRel", .6f }, { "fCut", 400 }, { "fEnv", 0 }, { "rOn", 1 }, { "rWet", .15f }, { "rSize", .9f } }));
+    e.push_back(E(B, "Grit Bass Stab", "pluckbass", { { "fDrv", 14 }, { "fCut", 1400 }, { "bcMix", .2f }, { "bcBits", 9 } }));
+    e.push_back(E(B, "Rage Sub Short", "subsine", { { "lADec", .45f }, { "lASus", 0 }, { "fDrv", 12 }, { "glide", 0 }, { "aRel", .1f }, { "aGain", 2 } }));
+    e.push_back(E(K, "Icy Bell Lead", "fmbell", { { "lBTune", 12 }, { "bRat", 4.f }, { "voices", 6 }, { "rWet", .5f }, { "dOn", 1 }, { "dMix", .3f }, { "dFb", .45f } }));
+    e.push_back(E(K, "Glass Pluck Melody", "pluckLead", { { "bTbl", 1.f }, { "bFM", .2f }, { "lBDec", .35f }, { "rWet", .4f }, { "dMix", .25f } }));
+    e.push_back(E(K, "Crystal Music Box", "kalimba", { { "lATune", 12 }, { "lADec", 1.8f }, { "rWet", .5f }, { "rType", 1 }, { "smMix", .2f } }));
+    e.push_back(E(K, "Detuned Bell Dream", "fmbell", { { "bDet", .8f }, { "lBLvl", .6f }, { "smMix", .3f }, { "rWet", .55f } }));
+    e.push_back(E(K, "Soft Kalimba Dream", "kalimba", { { "fCut", 4500 }, { "rWet", .45f }, { "dOn", 1 }, { "dMix", .3f } }));
+    e.push_back(E(K, "Sparkle Pluck", "analogPluck", { { "bTbl", .75f }, { "bFM", .15f }, { "lBTune", 12 }, { "rWet", .35f }, { "dMix", .3f } }));
+    e.push_back(E(P, "Cloud Pad", "warmpad", { { "fCut", 1800 }, { "fLfo", .2f }, { "lfoRate", .25f }, { "rWet", .65f }, { "rSize", .95f }, { "aWid", 1.9f } }));
+    e.push_back(E(P, "Night Drive Pad", "chorpad", { { "fCut", 2200 }, { "dOn", 1 }, { "dMix", .25f }, { "rWet", .5f } }));
+    e.push_back(E(P, "Foggy Strings", "ensemble", { { "aAtk", .5f }, { "lAAtk", .6f }, { "fCut", 1500 }, { "rWet", .6f }, { "bcMix", .1f } }));
+    e.push_back(E(P, "Wide Air Pad", "wtpad", { { "lCLvl", .12f }, { "cGrn", .5f }, { "cCol", .8f }, { "rWet", .6f }, { "aWid", 2.f } }));
+    e.push_back(E(P, "Void Choir", "warmpad", { { "aInst", 14 }, { "ftMix", .4f }, { "ftShift", .2f }, { "rWet", .7f }, { "fCut", 1800 } }));
+    e.push_back(E(Y, "Dark Piano Loop", "grand", { { "fCut", 1800 }, { "lADec", 2.5f }, { "rWet", .35f }, { "lBLvl", .1f }, { "bcMix", .1f } }));
+    e.push_back(E(Y, "Lo-Fi EP Haze", "ep", { { "bcMix", .35f }, { "bcBits", 9 }, { "bcRate", .3f }, { "fCut", 2500 }, { "fLfo", .15f }, { "lfoRate", .4f }, { "rWet", .4f } }));
+    e.push_back(E(Y, "Detuned Piano Dream", "grand", { { "lBLvl", .25f }, { "lBTune", .14f }, { "smMix", .25f }, { "rWet", .45f } }));
+    e.push_back(E(Ld, "Rage Lead Saw", "supersaw", { { "fDrv", 10 }, { "fCut", 5000 }, { "voices", 1 }, { "glide", .06f }, { "dOn", 1 }, { "dMix", .2f } }));
+    e.push_back(E(Ld, "Hyper Square Lead", "pluckLead", { { "lBDec", 1.f }, { "lBSus", .8f }, { "bFM", .1f }, { "dMix", .25f } }));
+    e.push_back(E(Ld, "Whisper Synth Lead", "analoglead", { { "lCLvl", .06f }, { "cCol", .8f }, { "fCut", 2800 }, { "rWet", .45f } }));
+    e.push_back(E(D, "Trap Kit Hard", "kit", { { "kit", 2 }, { "fCut", 18000 }, { "fRes", .05f }, { "fEnv", 0 }, { "fDrv", 5 } }));
+    e.push_back(E(D, "Lo-Fi Drill Kit", "kit", { { "kit", 1 }, { "bcMix", .25f }, { "bcBits", 10 }, { "fCut", 8000 }, { "fRes", .05f }, { "fEnv", 0 } }));
+    e.push_back(E(D, "Dark Reverse Riser", "riser", { { "fCut", 400 }, { "lCCol", .3f }, { "rWet", .6f } }));
+    return e;
+}
+
+std::vector<Preset> build()
+{
     std::vector<Preset> out;
     for (const auto& e : entries())
     {
-        std::array<float, P_COUNT> v {};
-        for (int i = 0; i < P_COUNT; ++i) v[(size_t) i] = D[(size_t) i].def;
-        auto apply = [&](const KV& kv) {
-            for (auto& p : kv) { int i = indexOf(p.first); jassert(i >= 0); if (i >= 0) v[(size_t) i] = juce::jlimit(D[(size_t) i].mn, D[(size_t) i].mx, p.second); } };
-        apply(archetypes().at(e.arch));
-        if (e.sig)
-        {
-            const uint32_t h = fnv(e.name);
-            switch (h % 4)
-            {
-                case 0: apply({ { "bcMix", .3f }, { "bcBits", 8 }, { "rmMix", .12f }, { "rmFreq", 330 } }); break;
-                case 1: apply({ { "smMix", .4f }, { "smSize", .6f }, { "cGrn", .6f } }); break;
-                case 2: apply({ { "ftMix", .4f }, { "ftShift", (float) (h % 100) / 100.f }, { "smMix", .2f } }); break;
-                default: apply({ { "rmMix", .3f }, { "rmFreq", 110.f + (float) (h % 400) }, { "dOn", 1 }, { "dMix", .3f } }); break;
-            }
-            apply({ { "m5", .2f } });
-        }
-        apply(e.tweaks);
+        const auto v = computeValues(e);
 
         struct Variant { const char* suffix; };
         static const char* suffixes[4] = { "", " Bright", " Dark", " Wide" };
@@ -239,7 +279,66 @@ std::vector<Preset> build()
 }
 }
 
-const std::vector<Preset>& presets() { static const std::vector<Preset> p = build(); return p; }
+namespace
+{
+std::vector<Preset>& store() { static std::vector<Preset> v = [] { auto b = build(); b.reserve(b.size() + 4000); return b; }(); return v; }
+size_t& factoryN() { static size_t n = 0; return n; }
+juce::File& dirRef() { static juce::File f = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("ZIL").getChildFile("Presets"); return f; }
+}
+
+const std::vector<Preset>& presets() { auto& v = store(); if (factoryN() == 0) factoryN() = v.size(); return v; }
+int factoryCount() { presets(); return (int) factoryN(); }
+juce::File userPresetDir() { return dirRef(); }
+void setUserPresetDir(const juce::File& f) { dirRef() = f; }
+
+int reloadUserPresets()
+{
+    auto& v = store(); presets(); v.resize(factoryN());
+    const auto dir = dirRef(); dir.createDirectory();
+    auto files = dir.findChildFiles(juce::File::findFiles, true, "*.zilpreset");
+    files.sort();
+    const auto& D = defs(); int n = 0;
+    for (const auto& f : files)
+    {
+        if (n >= 3500) break;
+        auto xml = juce::parseXML(f);
+        if (!xml || !xml->hasTagName("ZILPreset")) continue;
+        Preset p; p.user = true; p.file = f;
+        p.name = xml->getStringAttribute("name", f.getFileNameWithoutExtension());
+        p.category = xml->getStringAttribute("category", "USER"); p.sub = xml->getStringAttribute("sub", "User");
+        for (int i = 0; i < P_COUNT; ++i) p.v[(size_t) i] = D[(size_t) i].def;
+        for (auto* c : xml->getChildIterator())
+            if (c->hasTagName("P")) { int i = indexOf(c->getStringAttribute("id")); if (i >= 0) p.v[(size_t) i] = juce::jlimit(D[(size_t) i].mn, D[(size_t) i].mx, (float) c->getDoubleAttribute("v")); }
+        v.push_back(std::move(p)); ++n;
+    }
+    return n;
+}
+
+static bool writePreset(const juce::File& f, const juce::String& name, const juce::String& cat, const juce::String& sub, const std::array<float, P_COUNT>& vals)
+{
+    juce::XmlElement root("ZILPreset"); root.setAttribute("name", name); root.setAttribute("category", cat); root.setAttribute("sub", sub); root.setAttribute("version", 1);
+    for (int i = 0; i < P_COUNT; ++i) { auto* c = root.createNewChildElement("P"); c->setAttribute("id", defs()[(size_t) i].id); c->setAttribute("v", (double) vals[(size_t) i]); }
+    return f.replaceWithText(root.toString());
+}
+
+bool savePreset(const juce::String& name, const std::array<float, P_COUNT>& vals, juce::File* written)
+{
+    auto dir = dirRef(); dir.createDirectory();
+    auto base = juce::File::createLegalFileName(name.trim().isEmpty() ? juce::String("My Preset") : name.trim());
+    auto f = dir.getChildFile(base + ".zilpreset"); int k = 2;
+    while (f.existsAsFile()) f = dir.getChildFile(base + " " + juce::String(k++) + ".zilpreset");
+    if (written) *written = f;
+    return writePreset(f, name.trim().isEmpty() ? juce::String("My Preset") : name.trim(), "USER", "My Presets", vals);
+}
+
+int exportPack(const juce::File& dir)
+{
+    dir.createDirectory(); int n = 0;
+    for (const auto& e : packEntries())
+        if (writePreset(dir.getChildFile(juce::File::createLegalFileName(e.name) + ".zilpreset"), e.name, e.cat, e.sub, computeValues(e))) ++n;
+    return n;
+}
+
 const juce::StringArray& categoryNames()
 {
     static const juce::StringArray c { "KEYS", "BASS", "LEAD", "PAD", "STRINGS", "PLUCK", "DRUMS", "FX", "ARP" };
